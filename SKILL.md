@@ -5,84 +5,83 @@ user_invocable: true
 argument_description: "(no arguments)"
 ---
 
-# cpp — Compact with Protection（带信息保全的压缩 / 任务交接）
+# cpp — Compact with Protection
 
 ## Overview
 
-`/compact` 压缩上下文时会丢弃中间历史，可能连带丢掉当前会话里辛苦确认的**服务器连接方式、当前 git 分支/推送目标、进行中的任务、环境与路径、踩过的坑**。`cpp` 在压缩前把这些关键事实**落盘并打印成一份可直接复制的交接文档**，再交给你一条已内联 focus 指令的 `/compact` 命令。
+When `/compact` compresses the context it drops the middle of the history, and with it the hard-won facts you confirmed in this session: **how to reach the servers, the current git branch / push target, the in-progress task, environments and paths, and the gotchas you already hit.** Before that compression, `cpp` **writes those critical facts to disk and prints a copy-ready handoff doc**, then hands you a `/compact` command with an inlined focus instruction.
 
-这份交接文档有两个读者，缺一不可：
-- **未来的你**（压缩后的同一会话，或全新会话）——需要精确的技术细节以便无缝续接。
-- **接手的另一个人**（同事、另一个 agent）——没有本次对话的任何隐藏上下文，需要看懂"现在是什么状态、我该做什么"。
+The handoff doc has two readers, both essential:
+- **Future you** (the same session after compaction, or a brand-new session) — needs precise technical detail to resume seamlessly.
+- **Someone taking over** (a teammate, another agent) — has none of this session's hidden context and must understand "what state are we in, and what do I do next".
 
-**核心事实（不要自欺）：** skill 无法让 harness 真正执行 `/compact`——那是命令行外壳的按钮，只有用户能按。所以 `cpp` 的职责是**保全信息 + 备好命令**，最后那次真正的压缩必须由用户执行。绝不要声称"我已经压缩了"。
+**Output language:** this file is written in English, but the artifacts the skill produces at runtime — the handoff doc in Step 3 and the focus instruction in Step 4 — must be written **in the same language the user is speaking in this conversation**. If the user is speaking Chinese, produce them in Chinese. The headings and mechanics below are for you; the reader-facing output follows the user.
 
 ## When to Use
 
-- 上下文变长、准备 `/compact` 之前
-- 会话里已经确认了某些一次性、不在代码/CLAUDE.md 里、压缩后就查不回来的关键信息（如某台服务器的临时端口、本次的分支推送目标、跑到一半的实验路径、刚踩过的坑）
-- 用户想要一份「交接信息」，方便复制给别人或未来的自己接手
-- 不要用于：刚开新会话没有可保全的状态时
+- Context is getting long and you are about to `/compact`.
+- The session has established one-off facts that are not in the code or CLAUDE.md and cannot be looked back up after compaction (a server's temporary port, this session's branch push target, a half-finished experiment path, a gotcha you just hit).
+- The user wants a "handoff" they can copy to someone else or to a future session.
+- Do NOT use it when a session just started and there is no state worth preserving.
 
 ## Steps to Execute
 
-### Step 1: 扫描本次会话的关键信息（六类）
+### Step 1: Scan this session for critical information (six categories)
 
-从**当前对话历史**（不是重新去问用户、不是猜）中提取以下六类，凡本次会话出现过就收集，没出现的类别标注「本次会话无」：
+From the **current conversation history** (do not re-ask the user, do not guess), extract the following six categories. Collect whatever appeared in this session; mark any category that did not come up as "not present in this session":
 
-1. **服务器连接信息** —— 主机名/别名/IP、用户名、跳板机与端口、代理设置、免密状态、GPU 布局等本次实际用到或确认过的连接细节。
-2. **当前 git 分支与仓库状态** —— 仓库路径、当前分支名、推送目标远端（如 `GSJ_Thesis→abab`、`cap-x→v0.0.1.1` 这类非默认目标）、未提交改动概况、最近关键 commit。
-   - 如果当前工作目录是 git 仓库，**实际运行**下方命令核对，不要凭记忆：
+1. **Server connection info** — hostnames / aliases / IPs, usernames, jump hosts and ports, proxy settings, passwordless-login status, GPU layout, and any other connection details actually used or confirmed this session.
+2. **Current git branch and repo state** — repo path, current branch name, push target remote (non-default targets like `GSJ_Thesis→abab` or `cap-x→v0.0.1.1`), a summary of uncommitted changes, recent key commits.
+   - If the working directory is a git repo, **actually run** the commands below to verify — do not rely on memory:
      ```bash
      git -C <repo> rev-parse --abbrev-ref HEAD 2>/dev/null; git -C <repo> remote -v 2>/dev/null; git -C <repo> status -s 2>/dev/null | head -20
      ```
-3. **项目目标与进行中的任务** —— 当前在做什么、目标、关键决策、阻塞点，便于压缩后无缝续接。
-4. **环境与路径** —— conda/uv/pixi 环境名与路径、数据集/权重/checkpoint 路径、工作目录、关键脚本位置。
-5. **下一步行动清单** —— 明确的、可执行的 TODO，按顺序列出接手的人应该做的具体动作（不是重复第 3 类的状态描述）。每条尽量是一个动作 + 一个可判断"做完了"的标准。没有明确下一步时写「本次会话无」，不要编造。
-6. **已知问题 / 踩过的坑** —— 本次会话中出现过但**尚未解决**的报错、异常、反直觉行为，以及为避免接手人重蹈覆辙而需要特别提醒的陷阱（如"这个命令看着对但实际会导致 X"）。已经解决且不影响后续的坑不用写；正在生效的规避方法要写清楚。
+3. **Project goal and in-progress task** — what is being done right now, the goal, key decisions, blockers, so work can resume seamlessly after compaction.
+4. **Environments and paths** — conda / uv / pixi environment names and paths, dataset / weights / checkpoint paths, working directory, key script locations.
+5. **Next-action checklist** — an explicit, executable TODO list, in order, of the concrete actions the person taking over should perform (not a restatement of category 3's status). Each item should be one action plus a checkable "done when …" criterion. If there is no clear next step, write "not present in this session" — do not invent one.
+6. **Known issues / gotchas** — errors, exceptions, or counter-intuitive behavior that came up this session but are **still unresolved**, plus traps worth flagging so the next person does not repeat them (e.g. "this command looks right but actually causes X"). Skip gotchas that are already resolved and no longer matter; spell out any workaround currently in effect.
 
-### Step 2: 落盘到 scratchpad
+### Step 2: Write to the scratchpad
 
-把 Step 1 的结果写成结构化 Markdown，保存到本次会话 scratchpad 目录下的 `cpp_snapshot.md`（scratchpad 路径见系统提示的「Scratchpad Directory」段）。用固定六个二级标题，缺失类别也保留标题并写「本次会话无」。这一版面向**未来的你**，可以是精确的技术清单（路径、命令、参数），不必是完整句子。这样即使压缩丢了历史，`Read` 这个文件即可恢复全部关键状态与技术细节。
+Write the Step 1 results as structured Markdown to `cpp_snapshot.md` in this session's scratchpad directory (see the "Scratchpad Directory" section of the system prompt for the path). Use the same six second-level headings; keep the heading even for missing categories and write "not present in this session". This version is for **future you** and may be a precise technical listing (paths, commands, parameters) rather than full sentences. That way, even if compaction drops the history, a single `Read` of this file restores all critical state and technical detail.
 
-### Step 3: 打印一份可直接复制的交接文档
+### Step 3: Print a copy-ready handoff doc
 
-把 Step 1 的内容**改写**成一份交接文档打印到回复正文（中文），而不是把 Step 2 的技术清单原样搬过来。目的有两个：让信息出现在最近的上下文（`/compact` 几乎必然保留最近内容），以及让用户能不加修改地把这段话复制发给别人或粘进下一个新会话。
+**Rewrite** the Step 1 content into a handoff doc printed in the reply body — do not paste the Step 2 technical listing verbatim. This serves two purposes: it puts the information into the most recent context (which `/compact` almost always keeps), and it gives the user a block they can copy unchanged to someone else or into a new session. **Write it in the user's language** (see "Output language" above).
 
-改写要求：
-- 开头一段 2–3 句自然语言概述："在做什么项目 / 现在到哪一步 / 接手的人第一件事该干什么"，让完全没有背景的人也能秒懂全局，再展开六个分节。
-- 六类信息各自成节，标题用人话（例如"服务器怎么连"而不是干巴巴的"服务器连接信息"），内容保持技术细节的精确性（IP、路径、命令不能省略或改写错），但用完整句子或清晰要点呈现，不是关键词堆砌。
-- "下一步行动清单"用有序列表，每条可勾选、可执行。
-- "已知问题/踩过的坑"要讲清楚**现象 + 已知规避方法（如果有）**，不要只说"报错了"。
-- 结尾补一句指向落盘文件的说明，例如："完整技术细节已存在 `cpp_snapshot.md`，压缩后可让 Claude 读取该文件恢复。"
+Rewrite requirements:
+- Open with a 2–3 sentence plain-language overview: "what project / where we are now / what the person taking over should do first", so someone with zero background grasps the whole picture instantly, then expand into the six sub-sections.
+- Give each category its own section with a human heading (e.g. "How to reach the servers" rather than a dry "Server connection info"), keeping technical detail exact (IPs, paths, commands must not be dropped or mis-transcribed) but presented as full sentences or clear bullets, not a keyword dump.
+- Present the "next-action checklist" as an ordered, checkable, executable list.
+- For "known issues / gotchas", spell out **the symptom + the known workaround (if any)**, not just "it errored".
+- End with a line pointing at the on-disk file, e.g. "Full technical detail is saved in `cpp_snapshot.md`; after compaction, have Claude read that file to restore it."
 
-### Step 4: 交出一键 /compact 命令
+### Step 4: Hand over a one-shot /compact command
 
-在回复末尾，给出**一整行、可直接复制回车**的压缩命令，focus 指令用中文内联，覆盖六类信息，例如：
+At the end of the reply, give a **single line, ready to copy and run** compaction command, with the focus instruction inlined (in the user's language) covering all six categories, e.g.:
 
 ```
-/compact 保留以下信息：本次会话的服务器连接方式（主机/IP/用户/跳板/端口/代理）、当前 git 仓库路径与分支及推送目标远端、进行中的任务与目标、conda/uv/pixi 环境名与数据集/权重/checkpoint 等关键路径、下一步行动清单、已知问题与踩过的坑。快照已存于 scratchpad 的 cpp_snapshot.md。
+/compact Keep: this session's server connections (host/IP/user/jump/port/proxy); the current git repo path, branch, and push-target remote; the in-progress task and goal; conda/uv/pixi env names and dataset/weights/checkpoint paths; the next-action checklist; known issues and gotchas. Snapshot is saved at scratchpad/cpp_snapshot.md.
 ```
 
-然后明确提示用户：**「复制上面这行执行即可完成压缩；信息已备份到 cpp_snapshot.md，压缩后我可随时 Read 恢复。上面的交接文档也可以直接复制发给别人。」** 不要自己去调用 `/compact`，也不要假装压缩已完成。
+Then tell the user explicitly: **"Copy and run the line above to compact; the info is backed up to `cpp_snapshot.md` and I can `Read` it back anytime after compaction. The handoff doc above can also be copied and sent to someone else."** Do not call `/compact` yourself.
 
 ## Quick Reference
 
-| 步骤 | 动作 | 产出 | 读者 |
-|------|------|------|------|
-| 1 | 从对话历史扫描六类信息（git 状态实跑命令核对） | 内部清单 | — |
-| 2 | 写入 scratchpad/`cpp_snapshot.md`（技术清单，精确优先） | 落盘文件 | 未来的你 |
-| 3 | 改写成交接文档打印到回复正文（叙述体，可读优先） | 进最近上下文 | 未来的你 + 接手的人 |
-| 4 | 给出一键 `/compact <focus>` 并提示用户执行 | 用户手动压缩 | 用户 |
+| Step | Action | Output | Reader |
+|------|--------|--------|--------|
+| 1 | Scan history for the six categories (verify git state by actually running commands) | internal list | — |
+| 2 | Write to scratchpad/`cpp_snapshot.md` (technical listing, precision first) | on-disk file | future you |
+| 3 | Rewrite into a handoff doc printed in the reply (narrative, readability first) | into recent context | future you + the person taking over |
+| 4 | Give a one-shot `/compact <focus>` and prompt the user to run it | user compacts manually | the user |
 
 ## Common Mistakes
 
-- ❌ **自称"已压缩"**：skill 触不到 harness，真正压缩只能由用户按 `/compact`。你只负责保全+备命令。
-- ❌ **凭记忆写 git 分支/远端**：必须实跑 `git` 命令核对当前状态。
-- ❌ **只打印不落盘（或只落盘不打印）**：两者都要——落盘防彻底丢失，打印进最近上下文防被压缩裁掉。
-- ❌ **Step 3 直接照抄 Step 2**：落盘版给自己查技术细节，打印版要改写成完整句子、人话标题，让没有上下文的人也能看懂——两者用途不同，不是一份内容复制两遍。
-- ❌ **去问用户"你的服务器是哪台"**：信息来自本次对话历史，不是重新采集；本次没出现的就如实标「本次会话无」。
-- ❌ **"下一步行动清单"写成状态复述**：要写可执行的动作（"做 X，直到 Y 成立"），不是把第 3 类的项目背景再抄一遍。
-- ❌ **"已知问题"只写"报错了"不写现象和规避方法**：接手人需要知道具体报了什么、已经试过什么规避方式，否则等于没写。
-- ❌ **编造下一步或坑**：本次会话没有明确的下一步或未解决问题时，如实写「本次会话无」，不要为了显得完整而编。
-- ❌ **focus 指令太笼统**（如 `/compact 别丢重要信息`）：必须点名六类具体内容，压缩才有倾向性。
+- ❌ **Writing the git branch / remote from memory**: you must actually run `git` commands to verify current state.
+- ❌ **Printing without writing to disk (or writing without printing)**: do both — the disk copy guards against total loss, the printed copy lands in recent context so compaction does not cut it.
+- ❌ **Copying Step 2 straight into Step 3**: the on-disk version is a technical reference for yourself; the printed version must be rewritten into full sentences with human headings so someone without context can follow it. Different purposes — not one content pasted twice.
+- ❌ **Asking the user "which server is yours"**: the info comes from this session's history, not a fresh survey; whatever did not appear, mark honestly as "not present in this session".
+- ❌ **Writing the "next-action checklist" as a status recap**: write executable actions ("do X until Y holds"), not a re-copy of category 3's project background.
+- ❌ **"Known issues" that just say "it errored"** without symptom and workaround: the next person needs to know exactly what failed and what has already been tried, or it is worthless.
+- ❌ **Inventing next steps or gotchas**: when the session has no clear next step or unresolved issue, write "not present in this session" honestly rather than padding for completeness.
+- ❌ **Too-vague focus instruction** (e.g. `/compact don't lose important info`): it must name the six concrete categories so compaction is actually biased toward keeping them.
