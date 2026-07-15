@@ -13,7 +13,7 @@ The handoff doc is written for two readers: future you (who needs precise detail
 ### Install
 
 ```bash
-git clone https://github.com/Tigerdwgth/compact-plus-plus.git ~/.claude/skills/cpp
+git clone https://github.com/Tigerdwgth/Compact-Plus-Plus.git ~/.claude/skills/cpp
 ```
 
 Then just type `/cpp` in Claude Code — no arguments needed.
@@ -37,7 +37,7 @@ Claude Code 的 `/compact` 会压掉中间历史,顺手把你这一路辛苦确�
 ### 装
 
 ```bash
-git clone https://github.com/Tigerdwgth/compact-plus-plus.git ~/.claude/skills/cpp
+git clone https://github.com/Tigerdwgth/Compact-Plus-Plus.git ~/.claude/skills/cpp
 ```
 
 然后在 Claude Code 里敲 `/cpp` 就行,不用带参数。
